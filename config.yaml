@@ -1,0 +1,11 @@
+config:
+   node_number: 1234
+   log_level: DEBUG
+   cangrid_host: localhost
+   cangrid_port: 4444
+   service_port: 7777
+   canid: 10
+
+rfids:
+   16014023131: 1234
+   976876: 4
