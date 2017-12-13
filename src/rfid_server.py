@@ -1,15 +1,14 @@
-
-import socket
-import threading
 import logging
 import random
+import socket
 import string
-import select
-import errno
+import threading
+
 import rfid_client_handler
 
+
 class RfidServer(threading.Thread):
-    def __init__(self, host, port, rfid_queue, config):
+    def __init__(self, host, port, rfid_queue, config, node_config):
         threading.Thread.__init__(self)
         self.host = host
         self.port = port
@@ -20,6 +19,7 @@ class RfidServer(threading.Thread):
         self.running = True
         self.clients = {}
         self.config = config
+        self.node_config = node_config
 
     def id_generator(self,size=6, chars=string.ascii_uppercase + string.digits):
         return ''.join(random.choice(chars) for _ in range(size))
@@ -52,27 +52,6 @@ class RfidServer(threading.Thread):
         logging.debug("Removing ED client %s" % id)
         del self.clients[id]
         logging.debug("Sessions active %s" % self.clients)
-    # def listenToClient(self, client, address):
-    #     logging.debug("serving the tcp client")
-    #     size = 1024
-    #     while self.running:
-    #         try:
-    #             ready = select.select([client],[],[],1)
-    #             if ready[0]:
-    #                 data = client.recv(size)
-    #                 if data:
-    #                     response = data
-    #                     client.send(response)
-    #                 else:
-    #                     raise Exception('Client disconnected')
-    #         except:
-    #             logging.debug("exception")
-    #             self.clients.remove(client)
-    #             client.close()
-    #             raise
-    #             return False
-    #     logging.debug("Tcp server closing client socket")
-    #     client.close()
 
     def getName(self):
         return self.host + self.port

@@ -63,10 +63,13 @@ class RfidClient(threading.Thread):
         self.server.removeClient(self.id)
 
     def handleMessages(self, message):
+
         logging.debug("Received message %s from client %s"%(message, self.address))
         sensor , rfid = self.parseMessage(message)
+
         logging.debug("Parsed message %s %s"%(sensor, rfid))
         logging.debug("Doing rfid translation")
+
         rfid_code = ""
         rfid_int = int(rfid)
 

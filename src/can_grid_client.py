@@ -7,22 +7,25 @@ import sys
 import socket
 import binascii
 from opc import *
+import queue
 
 #class that deals with the can grid messages, basically this class holds the client socket and the major code
 
 class CanGridClient(threading.Thread):
 
 
-    def __init__(self, host, port, rfid_queue, config):
+    def __init__(self, host, port, rfid_queue, config, node_config):
         threading.Thread.__init__(self)
         self.host = host
         self.port = port
         self.rfid_queue = rfid_queue
         self.config = config
         self.connection = socket.socket()
+        self.cbus_out_queue = queue.Queue()
+        self.cbus_in_queue = queue.Queue()
         self.running = True
         self.connected = False
-
+        self.node_config = node_config
 
     def stop(self):
         self.running = False
@@ -46,6 +49,10 @@ class CanGridClient(threading.Thread):
     #main loop thread function
     def run(self):
 
+        #start the queue threads
+        self.consumeOutCBUSQueue()
+
+
         size = 1024
         while self.running:
             try:
@@ -54,7 +61,7 @@ class CanGridClient(threading.Thread):
 
                 #consume the output queue
                 if self.connected:
-                    self.consumeQueue()
+                    self.consumeRFIDQueue()
 
                 #get input messages
 
@@ -82,7 +89,7 @@ class CanGridClient(threading.Thread):
         self.stop()
 
     #consume all items from the queue
-    def consumeQueue(self):
+    def consumeRFIDQueue(self):
         # queue is in the format
         # <sensor_id>;<rfid>
 
@@ -99,8 +106,7 @@ class CanGridClient(threading.Thread):
 
                 data = item.split(";")
                 message = self.createGridMessage(OPC_ASON2, data[0], data[1])
-                logging.debug("Sending grid message %s" % (message))
-                self.connection.send(message.encode('ascii'))
+                self.cbus_out_queue.add(message)
         except Exception as e:
             logging.debug("Exception while processing the queue\n%s" %(e))
 
@@ -123,11 +129,43 @@ class CanGridClient(threading.Thread):
         message = ":S%02X%02X%s%02X%04X%04X;" % (h1, h2, frametype, int(opchex, 16), int(rfid), int(sensor_id))
         return message
 
-    #receive all the can message
-    def handleMessages(self, message):
-        logging.debug("Received message: %s" % message)
+# Output CBUS messages thread
 
-    def sendClientMessage(self, message):
-        logging.debug("Message to ED: %s" % message)
-        self.client.sendall(message.encode('utf-8'))
+    def sendGridMessage(self, message):
+        logging.debug("Putting the message in the queue to CBUS: %s" % message)
+        self.cbus_out_queue.add(message)
+
+    def __consumeOutCBUSQueue(self):
+
+        while self.running:
+            if (self.cbus_out_queue.empty() == False):
+                message = self.cbus_out_queue.pop()
+                logging.debug("Sending grid message %s" % (message))
+                self.connection.send(message.encode('ascii'))
+
+    def consumeOutCBUSQueue(self):
+        threading.Thread(target=self.__consumeOutCBUSQueue()).start()
+
+
+# Input CBUS message Thread
+    def __consumeInCBUSQueue(self):
+
+        while self.running:
+            if (self.cbus_in_queue.empty() == False):
+                message = self.cbus_in_queue.pop()
+                logging.debug("Received CBUS message %s" % (message))
+                self.handleCBUSMessages(message)
+
+
+    def consumeInCBUSQueue(self):
+        threading.Thread(target=self.__consumeInCBUSQueue()).start()
+
+
+    #receive all the can message
+    def handleCBUSMessages(self, message):
+        logging.debug("Handling CBUS message: %s" % message)
+
+
+
+
 

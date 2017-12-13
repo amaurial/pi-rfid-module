@@ -1,3 +1,5 @@
+FLIM = 1
+SLIM = 0
 OPC_ACK = b'\x00'
 OPC_NAK = b'\x01'
 OPC_HLT = b'\x02'
