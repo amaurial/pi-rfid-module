@@ -4,11 +4,11 @@ import socket
 import string
 import threading
 
-import rfid_client_handler
+from rfid_client_handler import *
 
 
 class RfidServer(threading.Thread):
-    def __init__(self, host, port, rfid_queue, config, node_config):
+    def __init__(self, host, port, rfid_queue, config):
         threading.Thread.__init__(self)
         self.host = host
         self.port = port
@@ -19,7 +19,6 @@ class RfidServer(threading.Thread):
         self.running = True
         self.clients = {}
         self.config = config
-        self.node_config = node_config
 
     def id_generator(self,size=6, chars=string.ascii_uppercase + string.digits):
         return ''.join(random.choice(chars) for _ in range(size))
