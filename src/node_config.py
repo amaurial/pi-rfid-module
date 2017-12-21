@@ -3,11 +3,12 @@ from opc import *
 import yaml
 import sys
 from shutil import copyfile
+import binascii
 
 #cbus memory data
 class NodeConfig:
 
-    def __init__(self, config_file):
+    def __init__(self, config_file_name):
         logging.debug("Initiate config class")
         # self.manufacturer_id = b'\x00'
         # self.minor_code_version = 0
@@ -22,11 +23,9 @@ class NodeConfig:
         # self.name = "7digits" # this has to be seven digits
         # self.events = {}
         # self.node_variables = b"\x00"
-        self.cbusconfig = "cbus_config"
-        self.node_number = 1234
-        self.config_dictionary = {}
-        self.config_file_name = config_file
+        self.config_file_name = config_file_name
         self.load_config()
+        self.cbusconfig = "cbus_config"
 
     def load_config(self):
         try:
@@ -47,9 +46,13 @@ class NodeConfig:
             logging.error(sys.exc_info()[0])
             raise
 
-    #getters and setters
-    #def getFlags(self):
+    def getFlags(self):
+        return 0
 
+    def getNumberStoredEvents(self):
+        n = self.config_dictionary[self.cbusconfig]["events"]
+
+    #getters and setters
     @property
     def config_dictionary(self):
         return self.__config_dictionary
@@ -146,7 +149,7 @@ class NodeConfig:
         return self.config_dictionary[self.cbusconfig]["name"]
 
     @name.setter
-    def name(self,val):
+    def name(self, val):
         if (len(val) > 7):
             self.config_dictionary[self.cbusconfig]["name"] = val[:7]
         else:
@@ -154,10 +157,10 @@ class NodeConfig:
 
     @property
     def events(self):
-        return self.config_dictionary[self.cbusconfig]["events"]
+        return self.__config_dictionary[self.cbusconfig]["events"]
 
-    @producer.setter
-    def events(self,val):
+    @events.setter
+    def events(self, val):
         self.config_dictionary[self.cbusconfig]["events"] = val
 
     @property
@@ -169,9 +172,17 @@ class NodeConfig:
         self.config_dictionary[self.cbusconfig]["canid"] = val
 
     @property
+    def node_variables(self):
+        return binascii.hexlify(self.config_dictionary[self.cbusconfig]["node_variables"].encode('ascii'))
+
+    @node_variables.setter
+    def node_variables(self, val):
+        self.config_dictionary[self.cbusconfig]["node_variables"] = "%s" % val
+
+    @property
     def node_number(self):
         return self.config_dictionary[self.cbusconfig]["node_number"]
 
     @node_number.setter
-    def node_number(self,val):
+    def node_number(self, val):
         self.config_dictionary[self.cbusconfig]["node_number"] = val

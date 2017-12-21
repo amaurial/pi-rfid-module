@@ -1,5 +1,55 @@
 FLIM = 1
 SLIM = 0
+#Modes for STMOD
+TMOD_SPD_MASK = 3
+TMOD_SPD_128 = 0
+TMOD_SPD_14 = 1
+TMOD_SPD_28I = 2
+TMOD_SPD_28 = 3
+# Error codes for OPC_ERR
+ERR_LOCO_STACK_FULL = 1
+ERR_LOCO_ADDR_TAKEN = 2
+ERR_SESSION_NOT_PRESENT = 3
+ERR_CONSIST_EMPTY = 4
+ERR_LOCO_NOT_FOUND = 5
+ERR_CMD_RX_BUF_OFLOW = 6
+ERR_INVALID_REQUEST = 7
+ERR_SESSION_CANCELLED = 8
+# Status codes for OPC_SSTAT
+SSTAT_NO_ACK = 1
+SSTAT_OVLD = 2
+SSTAT_WR_ACK = 3
+SSTAT_BUSY = 4
+SSTAT_CV_ERROR = 5
+#Error codes for OPC_CMDERR
+CMDERR_INV_CMD = 1
+CMDERR_NOT_LRN = 2
+CMDERR_NOT_SETUP = 3
+CMDERR_TOO_MANY_EVENTS = 4
+# CMDERR_NO_EV 5 now reserved
+CMDERR_INV_EV_IDX = 6
+CMDERR_INVALID_EVENT = 7
+#CMDERR_INV_EN_IDX 8 now reserved
+CMDERR_INV_PARAM_IDX = 9
+CMDERR_INV_NV_IDX = 10
+CMDERR_INV_EV_VALUE = 11
+CMDERR_INV_NV_VALUE = 12
+# Parameter index numbers (readable by OPC_RQNPN, returned in OPC_PARAN)
+# Index numbers count from 1, subtract 1 for offset into parameter block
+# Note that RQNPN with index 0 returns the parameter count
+PAR_MANU = 1 # Manufacturer id
+PAR_MINVER = 2 # Minor version letter
+PAR_MTYP = 3 # Module type code
+PAR_EVTNUM = 4 # Number of events supported
+PAR_EVNUM = 5 # Event variables per event
+PAR_NVNUM = 6 # Number of Node variables
+PAR_MAJVER = 7 # Major version number
+PAR_FLAGS = 8 # Node flags
+PAR_CPUID = 9 # Processor type
+PAR_BUSTYPE = 10 # Bus type
+PAR_LOAD = 11 # load address, 4 bytes
+CAN_SFF_MASK = 0x000007ff
+
 OPC_ACK = b'\x00'
 OPC_NAK = b'\x01'
 OPC_HLT = b'\x02'
