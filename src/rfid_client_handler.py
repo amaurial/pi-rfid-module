@@ -11,7 +11,7 @@ class RfidClient(threading.Thread):
 
 
 
-    def __init__(self, client, address, rfid_queue, server, id, config):
+    def __init__(self, client, address, rfid_queue, server, id, config, in_rfid_queue_condition):
         threading.Thread.__init__(self)
         self.client = client
         self.address = address
@@ -20,7 +20,8 @@ class RfidClient(threading.Thread):
         self.id = id
         self.rfid_queue = rfid_queue
         self.config = config
-
+        self.in_rfid_queue_condition = in_rfid_queue_condition
+        self.name = "RfidClient-" + self.name
         # constants
         self.RFIDS = "rfids"
         self.ackmessage = "OK\n".encode('utf-8')
@@ -73,19 +74,27 @@ class RfidClient(threading.Thread):
         rfid_code = ""
         rfid_int = int(rfid)
 
-        if rfid_int in self.config[self.RFIDS]:
-            rfid_code = self.config[self.RFIDS][rfid_int]
+        if rfid_int in self.config.config_dictionary[self.RFIDS]:
+            rfid_code = self.config.config_dictionary[self.RFIDS][rfid_int]
             logging.debug("Value %s is present and code is %s" % (rfid, rfid_code))
         else:
             rfid_code = rfid[:4]
             logging.debug("%s not in the config. Extracting the first 4 digits %s" % (rfid, rfid_code))
         msg = "%s;%s" % (sensor, rfid_code)
-        self.rfid_queue.put(msg)
+
+        with self.in_rfid_queue_condition:
+            self.in_rfid_queue_condition.acquire()
+            self.rfid_queue.put(msg)
+            self.in_rfid_queue_condition.release()
+            self.in_rfid_queue_condition.notify_all()
 
     def parseMessage(self, message):
         #message format is "sensor_id;rfid"
         sensor_rfid = message.split(";")
-        return sensor_rfid[0],sensor_rfid[1]
+        val = sensor_rfid[1]
+        if val[len(val)] == '\n':
+            val = val[:len(val) - 1]
+        return sensor_rfid[0], val
 
 
 

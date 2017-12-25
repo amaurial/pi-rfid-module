@@ -6,6 +6,7 @@ import time
 import sys
 import socket
 import binascii
+from threading import Thread
 from opc import *
 import queue
 
@@ -14,7 +15,7 @@ import queue
 
 class CanGridClient(threading.Thread):
 
-    def __init__(self, host, port, incoming_cbus_queue, outgoing_cbus_queue, config):
+    def __init__(self, host, port, incoming_cbus_queue, outgoing_cbus_queue, config, in_cbus_queue_condition, out_cbus_queue_condition):
         threading.Thread.__init__(self)
         self.host = host
         self.port = port
@@ -24,6 +25,10 @@ class CanGridClient(threading.Thread):
         self.cbus_in_queue = incoming_cbus_queue
         self.running = True
         self.connected = False
+        self.in_cbus_queue_condition = in_cbus_queue_condition
+        self.out_cbus_queue_condition = out_cbus_queue_condition
+        self.thread_cbus = Thread(target = self.consumeOutCBUSQueue, name="thread_cbus")
+        self.name = "CanGridClient"
 
     def stop(self):
         self.running = False
@@ -46,22 +51,25 @@ class CanGridClient(threading.Thread):
 
     #main loop thread function
     def run(self):
+        logging.info("CanGridClient started")
 
         #start the queue threads
-        self.consumeOutCBUSQueue()
+        self.thread_cbus.start()
 
         size = 1024
         while self.running:
             try:
-                if not self.connected:
+                if self.connected == False:
                     self.connect()
                 #get input messages
 
-                ready = select.select([self.connection], [], [], 1)
+                ready = select.select([self.connection], [], [])
                 if ready[0]:
                     data = self.connection.recv(size)
-                    if data:
-                        response = data.split(';:') #:ShhhhNd0d1d2d3d4d5d6d7;
+                    if len(data) > 0:
+                        logging.debug("Received grid data %s " % data)
+
+                        response = data.decode('ascii').split(";:") #:ShhhhNd0d1d2d3d4d5d6d7;
 
                         for message in response:
                             if (message[0] == ":"):
@@ -70,14 +78,18 @@ class CanGridClient(threading.Thread):
                             L = len(message)
                             if (message[L -1] == ";"):
                                 message = message[:(L - 1)]
-
-                            self.cbus_in_queue.add(message)
+                            with self.in_cbus_queue_condition:
+                                self.in_cbus_queue_condition.acquire()
+                                self.cbus_in_queue.put(message)
+                                self.in_cbus_queue_condition.release()
+                                self.in_cbus_queue_condition.notify_all()
 
                     else:
                         #raise Exception('Client disconnected')
                         logging.debug("Exception in client processing. Closing connection")
                         self.running = False
             except socket.timeout:
+                logging.debug("Socket error.")
                 self.connected = False
                 continue
             except BaseException as e:
@@ -95,16 +107,23 @@ class CanGridClient(threading.Thread):
 
     def sendGridMessage(self, message):
         logging.debug("Putting the message in the queue to CBUS: %s" % message)
-        self.cbus_out_queue.add(message)
-
-    def __consumeOutCBUSQueue(self):
-
-        while self.running:
-            if (self.cbus_out_queue.empty() == False):
-                message = self.cbus_out_queue.pop()
-                logging.debug("Sending grid message %s" % (message))
-                self.connection.send(message.encode('ascii'))
+        with self.out_cbus_queue_condition:
+            self.out_cbus_queue_condition.acquire()
+            self.cbus_out_queue.put(message)
+            self.out_cbus_queue_condition.release()
+            self.out_cbus_queue_condition.notify_all()
 
     def consumeOutCBUSQueue(self):
-        threading.Thread(target=self.__consumeOutCBUSQueue()).start()
+        logging.info("Cangrid thread for outgoing CBUS messages started")
+        while self.running:
+
+            while self.cbus_out_queue.empty() == True:
+                self.out_cbus_queue_condition.acquire()
+                self.out_cbus_queue_condition.wait()
+
+            if (self.cbus_out_queue.empty() == False):
+                message = self.cbus_out_queue.get()
+                self.out_cbus_queue_condition.release()
+                logging.debug("Sending grid message %s" % (message))
+                self.connection.send(message.encode('ascii'))
 

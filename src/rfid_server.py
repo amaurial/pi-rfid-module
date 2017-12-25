@@ -8,7 +8,7 @@ from rfid_client_handler import *
 
 
 class RfidServer(threading.Thread):
-    def __init__(self, host, port, rfid_queue, config):
+    def __init__(self, host, port, rfid_queue, config, in_rfid_queue_condition):
         threading.Thread.__init__(self)
         self.host = host
         self.port = port
@@ -19,6 +19,8 @@ class RfidServer(threading.Thread):
         self.running = True
         self.clients = {}
         self.config = config
+        self.in_rfid_queue_condition = in_rfid_queue_condition
+        self.name = "RfidServer"
 
     def id_generator(self,size=6, chars=string.ascii_uppercase + string.digits):
         return ''.join(random.choice(chars) for _ in range(size))
@@ -29,6 +31,7 @@ class RfidServer(threading.Thread):
         self.sock.close()
 
     def run(self):
+        logging.info("RfidServer started")
         logging.info('Starting tcp server on %s port = %d ' % (self.host, self.port))
         self.sock.listen(5)
         while self.running:
@@ -36,7 +39,7 @@ class RfidServer(threading.Thread):
             client.settimeout(60)
             logging.debug("New tcp client")
             id = self.id_generator()
-            clientHandler = rfid_client_handler.RfidClient(client, address, self.rfid_queue, self, id, self.config)
+            clientHandler = RfidClient(client, address, self.rfid_queue, self, id, self.config, self.in_rfid_queue_condition)
             self.clients[id]=clientHandler
             clientHandler.start()
 

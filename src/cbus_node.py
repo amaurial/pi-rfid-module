@@ -6,19 +6,47 @@ import binascii
 
 class CBUSNode(threading.Thread):
 
-    def __init__(self, incoming_cbus_queue, outgoing_cbus_queue, config):
+    def __init__(self, incoming_cbus_queue, outgoing_cbus_queue, config, in_cbus_queue_condition, out_cbus_queue_condition):
+        threading.Thread.__init__(self)
         self.config = config
         self.cbus_out_queue = outgoing_cbus_queue
         self.cbus_in_queue = incoming_cbus_queue
         self.running = True
         self.cbus_stopped = False
         self.setup_mode = False
+        self.out_cbus_queue_condition = out_cbus_queue_condition
+        self.in_cbus_queue_condition = in_cbus_queue_condition
+        self.name = "CBUSNode"
 
     def run(self):
-
+        logging.info("CBUSNode started")
         while self.running:
             #consume cbus messages
             self.consumeCBUSQueue()
+            logging.info("4444444")
+
+
+    def consumeCBUSQueue(self):
+
+        while self.cbus_in_queue.empty() == True:
+            self.in_cbus_queue_condition.acquire()
+            self.in_cbus_queue_condition.wait()
+
+        if self.cbus_in_queue.empty() == False:
+            self.in_cbus_queue_condition.acquire()
+            message = self.cbus_in_queue.get()
+            self.in_cbus_queue_condition.release()
+            data = self.parseCBUSMessage(message)
+            if len(data) == 0:
+                logging.debug("Empty data. Not processing")
+                return
+            logging.debug("Received CBUS message %s" % message)
+            if (data[0] in [OPC_QNN, OPC_RQMN, OPC_RQNP, OPC_RQEVN, OPC_SNN, OPC_ENUM, OPC_HLT,
+                        OPC_BON, OPC_BOOT, OPC_ARST, OPC_CANID, OPC_NVSET, OPC_RQNPN,
+                        OPC_NVRD]):
+                        self.handleCBUSMessages(data)
+            else:
+                self.nodeLogic(data)
 
     def stop(self):
         self.running = False
@@ -34,7 +62,7 @@ class CBUSNode(threading.Thread):
 
         cdata = []
         for i in range(8):
-            cdata[i] = 0
+            cdata.insert(i, 0)
 
         #ignore extended events
         if ("X" in message or "x" in message):
@@ -50,7 +78,7 @@ class CBUSNode(threading.Thread):
 
         data = message[spos + 1:].encode("ascii")
         datahex = binascii.unhexlify(data)
-        for i in len(datahex):
+        for i in range(len(datahex)):
             cdata[i] = datahex[i]
 
         return cdata
@@ -107,21 +135,6 @@ class CBUSNode(threading.Thread):
 
         return message
 
-    def consumeCBUSQueue(self):
-
-        for message in self.cbus_in_queue:
-            data = self.parseCBUSMessage(message)
-            if len(data) == 0:
-                logging.debug("Empty data. Not processing")
-                return
-
-            if (data[0] in [OPC_QNN, OPC_RQMN, OPC_RQNP, OPC_RQEVN, OPC_SNN, OPC_ENUM, OPC_HLT,
-                        OPC_BON, OPC_BOOT, OPC_ARST, OPC_CANID, OPC_NVSET, OPC_RQNPN,
-                        OPC_NVRD]):
-                        self.handleCBUSMessages(data)
-            else:
-                self.nodeLogic(data)
-
     #function to be override
     def nodeLogic(self, message):
         pass
@@ -131,7 +144,9 @@ class CBUSNode(threading.Thread):
             logging.debug("CBUS stopped. Dropping the message")
             return
 
-        self.cbus_out_queue.add(message)
+        with self.out_cbus_queue_condition:
+            self.cbus_out_queue.put(message)
+            self.out_cbus_queue_condition.notify_all()
 
     #receive all the can message
     def handleCBUSMessages(self, message):

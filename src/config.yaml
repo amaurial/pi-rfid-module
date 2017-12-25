@@ -1,7 +1,7 @@
 node_config:
    log_level: DEBUG
    log_file: node.log
-   cangrid_host: localhost
+   cangrid_host: pi
    cangrid_port: 4444
    service_port: 7777
 
@@ -28,3 +28,4 @@ cbus_config:
 rfids:
    16014023131: 1234
    976876: 4
+   964238131: 300
