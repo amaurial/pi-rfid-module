@@ -10,21 +10,21 @@ cbus_config:
    canid: 10
    mode: 1
    producer: True
-   consumer: False
+   consumer: True
    module_id: 72
-   number_of_node_variables:
+   number_of_node_variables: 10
    name: PIRFID
-   number_events: 0
-   variables_per_event: 0
+   number_events: 10
+   variables_per_event: 2
    manufacturer_id: 55
    minor_code_version: 1
    major_code_version: 0
    node_variables: "AABBCCDDEEFF" #hexa format "ffaabb" 2 dgitis per variable
    events:
       - "A0B0FFFF": #hexa format "ffaabb" 2 dgitis per variable
-         variables: "AA" #hexa format "ffaabb" 2 dgitis per variable
+         variables: "AABB" #hexa format "ffaabb" 2 dgitis per variable
       - "A0B0FFCC": #hexa format "ffaabb" 2 dgitis per variable
-         variables: "BB" #hexa format "ffaabb" 2 dgitis per variable
+         variables: "CCDD" #hexa format "ffaabb" 2 dgitis per variable
 rfids:
    16014023131: 1234
    976876: 4

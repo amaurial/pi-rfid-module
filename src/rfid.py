@@ -60,12 +60,15 @@ out_cbus_queue_condition = threading.Condition()
 
 # signal handling function
 def receive_signal(signum, stack):
+    if signum == signal.SIGBUS:
+        logging.debug("Received SIGBUS")
+        return
     logging.debug('Signal received. Stopping.')
     global running
     running = False
 
-signal.signal(signal.SIGINT,receive_signal)
-signal.signal(signal.SIGTERM,receive_signal)
+signal.signal(signal.SIGINT, receive_signal)
+signal.signal(signal.SIGTERM, receive_signal)
 
 
 
@@ -101,6 +104,15 @@ rfidNode = RfidNode(rfid_queue = rfid_queue,
                     out_cbus_queue_condition = out_cbus_queue_condition,
                     in_rfid_queue_condition = in_rfid_queue_condition,
                     config = config)
+
+#set node setup signal
+def doNodeSetup(signum, stack):
+    if signum == signal.SIGBUS:
+        #send RQNN
+
+
+
+signal.signal(signal.SIGBUS, doNodeSetup)
 
 # initialise the main threads
 logging.info('Starting RFID Server')

@@ -43,7 +43,7 @@ class CBUSNode(threading.Thread):
             logging.debug("Received CBUS message %s" % message)
             if (data[0] in [OPC_QNN, OPC_RQMN, OPC_RQNP, OPC_RQEVN, OPC_SNN, OPC_ENUM, OPC_HLT,
                         OPC_BON, OPC_BOOT, OPC_ARST, OPC_CANID, OPC_NVSET, OPC_RQNPN,
-                        OPC_NVRD]):
+                        OPC_NVRD, OPC_NNLRN, OPC_NNULN, OPC_EVLRN, OPC_NNCLR, OPC_NNEVN]):
                         self.handleCBUSMessages(data)
             else:
                 self.nodeLogic(data)
@@ -196,7 +196,50 @@ class CBUSNode(threading.Thread):
         if opc == OPC_NVSET:
             self.handleNVSET(message)
 
+        if opc == OPC_NNLRN:
+            self.handleNNLRN(message)
 
+        if opc == OPC_EVLRN:
+            self.handleEVLRN(message)
+
+        if opc == OPC_NNULN:
+            self.handleNNULN(message)
+
+        if opc == OPC_NNCLR:
+            self.handleNNCLR(message)
+
+        if opc == OPC_NNEVN:
+            self.handleNNEVN(message)
+
+    #clear all events from a node
+    def handleNNCLR(self,message):
+        if self.learn_mode == False:
+            return
+
+        logging.debug("Deleting all stored events")
+        self.config.events = ''
+
+    #Allows a read of available event space left
+    def handleNNEVN(self,message):
+
+        Lb = message[2]
+        Hb = message[1]
+        tnn = Hb
+        tnn = (tnn << 8) | Lb
+
+        if tnn != self.config.node_number:
+            logging.debug("RQEVN is for another node. My nn: %d received nn: %d" % (self.config.node_number, tnn))
+            return
+
+        nevents = len(self.config.events)
+        Lb = self.config.node_number & 0xff
+        Hb = (self.config.node_number >> 8) & 0xff
+        logging.debug("Sending response for NNEVN.")
+
+        gridmsg = self.createGridMessage(OPC_EVNLF, Hb, Lb, self.config.number_of_events - nevents)
+        self.putGridMessageInQueue(gridmsg)
+
+    #query node number
     def handleQNN(self, message):
 
         if self.setup_mode:
@@ -205,9 +248,10 @@ class CBUSNode(threading.Thread):
         Lb = self.config.node_number & 0xff
         Hb = (self.config.node_number >> 8) & 0xff
         logging.debug("Sending response for QNN.")
-        gridmsg = self.createGridMessage(OPC_PNN, Hb, Lb, self.node_config.manufacturer_id, self.node_config.module_id, self.node_config.getFlags())
+        gridmsg = self.createGridMessage(OPC_PNN, Hb, Lb, self.config.manufacturer_id, self.config.module_id, self.config.getFlags())
         self.putGridMessageInQueue(gridmsg)
-
+    
+    #request node parameter
     def handleRQNP(self, message):
 
         if not self.setup_mode:
@@ -217,11 +261,12 @@ class CBUSNode(threading.Thread):
         Hb = message[1]
 
         logging.debug("Sending response for RQNP.")
-        gridmsg = self.createGridMessage(OPC_PARAMS, self.node_config.manufacturer_id, self.node_config.minor_code_version,
-                                         self.node_config.module_id, self.node_config.number_of_events, self.node_config.event_variables_per_event,
-                                         self.node_config.number_of_node_variables, self.node_config.major_code_version)
+        gridmsg = self.createGridMessage(OPC_PARAMS, self.config.manufacturer_id, self.config.minor_code_version,
+                                         self.config.module_id, self.config.number_of_events, self.config.event_variables_per_event,
+                                         self.config.number_of_node_variables, self.config.major_code_version)
         self.putGridMessageInQueue(gridmsg)
-
+    
+    #request number of stored events
     def handleRQEVN(self, message):
 
         Lb = message[2]
@@ -229,31 +274,33 @@ class CBUSNode(threading.Thread):
         tnn = Hb
         tnn = (tnn << 8) | Lb
 
-        if tnn != self.node_config.node_number:
-            logging.debug("RQEVN is for another node. My nn: %d received nn: %d" % (self.node_config.node_number, tnn))
+        if tnn != self.config.node_number:
+            logging.debug("RQEVN is for another node. My nn: %d received nn: %d" % (self.config.node_number, tnn))
             return
 
         Lb = self.config.node_number & 0xff
         Hb = (self.config.node_number >> 8) & 0xff
         logging.debug("Sending response for RQEVN.")
 
-        gridmsg = self.createGridMessage(OPC_NUMEV, Hb, Lb, len(self.node_config.events))
+        gridmsg = self.createGridMessage(OPC_NUMEV, Hb, Lb, len(self.config.events))
         self.putGridMessageInQueue(gridmsg)
 
+    #request module name
     def handleRQMN(self, message):
 
         if not self.setup_mode:
             return
         logging.debug("Sending response for NAME.")
-        gridmsg = self.createGridMessage(OPC_NAME, self.node_config.name[0],
-                                         self.node_config.name[1],
-                                         self.node_config.name[2],
-                                         self.node_config.name[3],
-                                         self.node_config.name[4],
-                                         self.node_config.name[5],
-                                         self.node_config.name[6])
+        gridmsg = self.createGridMessage(OPC_NAME, self.config.name[0],
+                                         self.config.name[1],
+                                         self.config.name[2],
+                                         self.config.name[3],
+                                         self.config.name[4],
+                                         self.config.name[5],
+                                         self.config.name[6])
         self.putGridMessageInQueue(gridmsg)
 
+    #Request read of a node parameter by index
     def handleRQNPN(self, message):
 
         Lb = message[2]
@@ -261,55 +308,149 @@ class CBUSNode(threading.Thread):
         tnn = Hb
         tnn = (tnn << 8) | Lb
 
-        if tnn != self.node_config.node_number:
-            logging.debug("RQNPN is for another node. My nn: %d received nn: %d" % self.node_config.node_number, tnn)
+        if tnn != self.config.node_number:
+            logging.debug("RQNPN is for another node. My nn: %d received nn: %d" % self.config.node_number, tnn)
             return
 
-        if message[3] > self.node_config.number_of_node_variables:
+        if message[3] > self.config.number_of_node_variables:
             #index invalid
-            gridmsg = self.createGridMessage(OPC_CMDERR, Hb, Lb, CMDERR_INV_PARAM_IDX)
+            gridmsg = self.createGridMessage(OPC_CMDERR, Hb, Lb, CMDERR_INV_NV_IDX)
             self.putGridMessageInQueue(gridmsg)
             return
 
-        p = self.node_config.node_variables[message[3]]
+        p = self.config.node_variables[message[3]]
         if message[3] == 0:
-            p = self.node_config.number_of_node_variables
+            p = self.config.number_of_node_variables
 
         gridmsg = self.createGridMessage(OPC_PARAN, Hb, Lb, message[3], p)
         self.putGridMessageInQueue(gridmsg)
 
+    #put the node in learn mode
+    def handleNNLRN(self, message):
+
+        Lb = message[2]
+        Hb = message[1]
+        tnn = Hb
+        tnn = (tnn << 8) | Lb
+
+        if tnn != self.config.node_number:
+            logging.debug("NNLRN is for another node. My nn: %d received nn: %d" % self.config.node_number, tnn)
+            return
+
+        self.learn_mode = True
+
+    #finish the learn mode
+    def handleNNULN(self, message):
+
+        Lb = message[2]
+        Hb = message[1]
+        tnn = Hb
+        tnn = (tnn << 8) | Lb
+
+        if tnn != self.config.node_number:
+            logging.debug("NNULN is for another node. My nn: %d received nn: %d" % self.config.node_number, tnn)
+            return
+
+        logging.debug("Saving config")
+        self.config.save_config()
+        self.learn_mode = False
+
+    #teach an event or a device
+    def handleEVLRN(self, message):
+
+        Lb = message[2]
+        Hb = message[1]
+
+        if Lb == 0x00 and Hb == 0x00:
+            logging.debug("EVLRN teaching a device")
+            #TODO
+            gridmsg = self.createGridMessage(OPC_CMDERR, Hb, Lb, CMDERR_INV_CMD)
+            self.putGridMessageInQueue(gridmsg)
+            return
+
+        logging.debug("EVLRN teaching an event")
+        event = "%02X%02X%02X%02X" % (message[1], message[2], message[3], message[4])
+
+        if varindex > self.config.event_variables_per_event:
+            #send error
+            gridmsg = self.createGridMessage(OPC_CMDERR, Hb, Lb, CMDERR_INV_EV_IDX)
+            self.putGridMessageInQueue(gridmsg)
+            return
+
+        events = self.config.events
+        nevents = len(events)
+        evindex = -1
+        evexist = False
+
+        for i in range(0, nevents):
+            if event in events[i]:
+                evindex = i
+                evexist = True
+
+        #update variables
+
+        hasvar = False
+        if len(message > 5):
+            varindex = message[5]
+            var = message[6]
+            hasvar = True
+
+        if evexist:
+            vars = events[evindex][event]['variables']
+            if hasvar:
+                tempvars = binascii.unhexlify(vars.encode('ascii'))
+                tempvars[varindex-1] = var
+                vars = binascii.hexlify(tempvars)
+                vars=''.join(chr(i) for i in vars)
+
+        #insert new value
+        else:
+            vars = bytearray([0] * self.config.event_variables_per_event)
+            if hasvar:
+                vars[varindex] = var
+                vars = binascii.hexlify(vars)
+                vars=''.join(chr(i) for i in vars)
+
+        events[evindex][event]['variables'] = vars
+
+        #send the ack
+        gridmsg = self.createGridMessage(OPC_WRACK)
+        self.putGridMessageInQueue(gridmsg)
+
+    #read a node variable
     def handelNVRD(self, message):
 
         Lb = message[2]
         Hb = message[1]
         tnn = Hb
         tnn = (tnn << 8) | Lb
-        if tnn != self.node_config.node_number:
-            logging.debug("NVRD is for another node. My nn: %d received nn: %d" % self.node_config.node_number, tnn)
+        if tnn != self.config.node_number:
+            logging.debug("NVRD is for another node. My nn: %d received nn: %d" % self.config.node_number, tnn)
             return
 
-        if (message[3] > self.node_config.number_of_node_variables or message[3] == 0):
+        if (message[3] > self.config.number_of_node_variables or message[3] == 0):
             #index invalid
             gridmsg = self.createGridMessage(OPC_CMDERR, Hb, Lb, CMDERR_INV_PARAM_IDX)
             self.putGridMessageInQueue(gridmsg)
             logging.debug("NVRD Invalid index %d" % message[3])
             return
 
-        gridmsg = self.createGridMessage(OPC_NVANS, Hb, Lb, message[3], self.node_config.node_variables[message[3]])
+        gridmsg = self.createGridMessage(OPC_NVANS, Hb, Lb, message[3], self.config.node_variables[message[3]])
         self.putGridMessageInQueue(gridmsg)
         logging.debug("NVRD processed. Sent NVANS")
 
+    #set a node variable
     def handleNVSET(self, message):
 
         Lb = message[2]
         Hb = message[1]
         tnn = Hb
         tnn = (tnn << 8) | Lb
-        if tnn != self.node_config.node_number:
-            logging.debug("NVSET is for another node. My nn: %d received nn: %d" % self.node_config.node_number, tnn)
+        if tnn != self.config.node_number:
+            logging.debug("NVSET is for another node. My nn: %d received nn: %d" % self.config.node_number, tnn)
             return
 
-        if (message[3] > self.node_config.number_of_node_variables() or message[3] == 0):
+        if (message[3] > self.config.number_of_node_variables() or message[3] == 0):
             #index invalid
             gridmsg = self.createGridMessage(OPC_CMDERR, Hb, Lb, CMDERR_INV_PARAM_IDX)
             self.putGridMessageInQueue(gridmsg)
@@ -319,12 +460,13 @@ class CBUSNode(threading.Thread):
         #1 error, 2 reconfigure , 3 restart the service
         idx = message[3]
         data = message[4]
-        self.node_config.node_variables[idx] = data
+        self.config.node_variables[idx] = data
 
         gridmsg = self.createGridMessage(OPC_WRACK, Hb, Lb)
         self.putGridMessageInQueue(gridmsg)
         logging.debug("NVSET ok. Sent wrack")
 
+    #save node number
     def handleSNN(self, message):
 
         if not self.setup_mode:
@@ -336,17 +478,18 @@ class CBUSNode(threading.Thread):
         tnn = (tnn << 8) | Lb
 
         logging.debug("Saving node number %d." % tnn)
-        self.node_config.node_number = tnn
+        self.config.node_number = tnn
 
         logging.debug("Save node number success.")
 
-        Lb = self.node_config.node_number & 0xff
-        Hb = (self.node_config.node_number >> 8) & 0xff
+        Lb = self.config.node_number & 0xff
+        Hb = (self.config.node_number >> 8) & 0xff
 
         gridmsg = self.createGridMessage(OPC_NNACK, Hb, Lb)
         self.putGridMessageInQueue(gridmsg)
         self.setup_mode = False
 
+    #set a canid
     def handleCANID(self, message):
 
         if self.setup_mode:
@@ -357,21 +500,23 @@ class CBUSNode(threading.Thread):
         Hb = message[1]
         tnn = Hb
         tnn = (tnn << 8) | Lb
-        if tnn != self.node_config.node_number:
-            logging.debug("Set CANID is for another node. My nn: %d received nn: %d" % self.node_config.node_number, tnn)
+        if tnn != self.config.node_number:
+            logging.debug("Set CANID is for another node. My nn: %d received nn: %d" % self.config.node_number, tnn)
             return
 
         logging.debug("Virtual node does not have canid. Sending error")
-        Lb = self.node_config.node_number & 0xff
-        Hb = (self.node_config.node_number >> 8) & 0xff
+        Lb = self.config.node_number & 0xff
+        Hb = (self.config.node_number >> 8) & 0xff
         gridmsg = self.createGridMessage(OPC_CMDERR, Hb, Lb, CMDERR_INVALID_EVENT)
         self.putGridMessageInQueue(gridmsg)
 
+    #do self enum
     def handleENUM(self, message):
 
         logging.debug("Virtual node does not have canid.")
         return
 
+    #halt the node
     def handleHLT(self, message):
 
         if self.setup_mode:
@@ -380,6 +525,7 @@ class CBUSNode(threading.Thread):
         logging.info("Stopping CBUS")
         self.cbus_stopped = True
 
+    #resume the node
     def handleBON(self, message):
 
         if self.setup_mode:
@@ -388,6 +534,7 @@ class CBUSNode(threading.Thread):
         logging.info("Enabling CBUS")
         self.cbus_stopped = False
 
+    #reset the node
     def handleARST(self, message):
 
         if self.setup_mode:
@@ -396,6 +543,7 @@ class CBUSNode(threading.Thread):
         logging.info("Enabling CBUS")
         self.cbus_stopped = False
 
+    #boot the node
     def handleBOOT(self, message):
 
         if self.setup_mode:

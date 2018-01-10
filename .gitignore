@@ -1,3 +1,6 @@
 __pycache__
 rfid.log
 .idea
+src/config1.yaml
+src/node.log
+src/temp.yaml

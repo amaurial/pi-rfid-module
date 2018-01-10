@@ -47,10 +47,9 @@ class NodeConfig:
             raise
 
     def getFlags(self):
+        #TODO
         return 0
 
-    def getNumberStoredEvents(self):
-        n = self.config_dictionary[self.cbusconfig]["events"]
 
     #getters and setters
     @property

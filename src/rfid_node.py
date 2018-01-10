@@ -49,7 +49,7 @@ class RfidNode(CBUSNode):
                         break
 
                     data = item.split(";")
-                    message = self.createGridMessage(OPC_ASON2, data[0], data[1])
+                    message = self.createRFIDMessage(OPC_ASON2, data[0], data[1])
 
                     with self.out_cbus_queue_condition:
                         self.out_cbus_queue_condition.acquire()
@@ -63,22 +63,23 @@ class RfidNode(CBUSNode):
                 self.in_rfid_queue_condition.release()
 
     # build a grid message to send
-    def createGridMessage(self, opc, sensor_id, rfid):
+    def createRFIDMessage(self, opc, sensor_id, rfid):
 
         # The GridConnect protocol encodes messages as an ASCII string of up to 24 characters of the form:
         # :ShhhhNd0d1d2d3d4d5d6d7;
         # standard frame
-        CAN_SFF_MASK = 0x000007ff
-        frametype = "N"
-        c = 5 #priority 0101
-        d = c << 8
-        tempcanid = d | int(self.config.canid & CAN_SFF_MASK)
-
-        h2 = int(tempcanid << 5) & 0xff
-        h1 = int(tempcanid >> 3) & 0xff
+        # CAN_SFF_MASK = 0x000007ff
+        # frametype = "N"
+        # c = 5 #priority 0101
+        # d = c << 8
+        # tempcanid = d | int(self.config.canid & CAN_SFF_MASK)
+        #
+        # h2 = int(tempcanid << 5) & 0xff
+        # h1 = int(tempcanid >> 3) & 0xff
         opchex = binascii.hexlify(opc)
-
-        message = ":S%02X%02X%s%02X%04X%04X;" % (h1, h2, frametype, int(opchex, 16), int(rfid), int(sensor_id))
+        #
+        # message = ":S%02X%02X%s%02X%04X%04X;" % (h1, h2, frametype, int(opchex, 16), int(rfid), int(sensor_id))
+        message = self.createGridMessage( opchex, int(rfid), int(sensor_id))
         return message
 
     def nodeLogic(self, message):
