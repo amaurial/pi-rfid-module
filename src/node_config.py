@@ -47,9 +47,40 @@ class NodeConfig:
             raise
 
     def getFlags(self):
-        #TODO
-        return 0
+        flag = 0x04 #always FLIM and not support bootloading
+        if self.consumer:
+            flag = flag | 0x01
+        if self.producer:
+            flag = flag | 0x02
 
+        logging.debug("Config flag is %d" % flag)
+
+        return flag
+
+
+    def convertStringToArrayInt(self,variables):
+        #the variables format is "0xaa,0xbb,123"
+        #the function returns and array of integers
+
+        if len(variables) == 0:
+            return None
+
+        list = variables.split(',')
+        r = []
+        for v in list:
+            r.append(int(v, 0))
+        return r
+
+    def convertArrayIntToString(self,variables):
+        #the variables is an array of int
+
+        if len(variables) == 0:
+            return ''
+        s=''
+        for v in variables:
+           s = s + "0x%02X," % v
+
+        return s[:len(s)-1]
 
     #getters and setters
     @property
@@ -62,7 +93,11 @@ class NodeConfig:
 
     @property
     def manufacturer_id(self):
-        return self.config_dictionary[self.cbusconfig]["manufacturer_id"]
+        try:
+            val = int(self.config_dictionary[self.cbusconfig]["manufacturer_id"])
+            return val
+        except:
+            return 0
 
     @manufacturer_id.setter
     def manufacturer_id(self,val):
@@ -70,7 +105,11 @@ class NodeConfig:
 
     @property
     def minor_code_version(self):
-        return self.config_dictionary[self.cbusconfig]["minor_code_version"]
+        try:
+            val = int(self.config_dictionary[self.cbusconfig]["minor_code_version"])
+            return val
+        except:
+            return 0
 
     @minor_code_version.setter
     def minor_code_version(self,val):
@@ -78,7 +117,11 @@ class NodeConfig:
 
     @property
     def major_code_version(self):
-        return self.config_dictionary[self.cbusconfig]["major_code_version"]
+        try:
+            val = int(self.config_dictionary[self.cbusconfig]["major_code_version"])
+            return val
+        except:
+            return 0
 
     @major_code_version.setter
     def major_code_version(self,val):
@@ -86,7 +129,11 @@ class NodeConfig:
 
     @property
     def module_id(self):
-        return self.config_dictionary[self.cbusconfig]["module_id"]
+        try:
+            val = int(self.config_dictionary[self.cbusconfig]["module_id"])
+            return val
+        except:
+            return 0
 
     @module_id.setter
     def module_id(self,val):
@@ -94,7 +141,11 @@ class NodeConfig:
 
     @property
     def number_of_events(self):
-        return self.config_dictionary[self.cbusconfig]["number_events"]
+        try:
+            val = int(self.config_dictionary[self.cbusconfig]["number_events"])
+            return val
+        except:
+            return 0
 
     @number_of_events.setter
     def number_of_events(self,val):
@@ -102,7 +153,11 @@ class NodeConfig:
 
     @property
     def event_variables_per_event(self):
-        return self.config_dictionary[self.cbusconfig]["variables_per_event"]
+        try:
+            val = int(self.config_dictionary[self.cbusconfig]["variables_per_event"])
+            return val
+        except:
+            return 0
 
     @event_variables_per_event.setter
     def event_variables_per_event(self,val):
@@ -110,7 +165,11 @@ class NodeConfig:
 
     @property
     def number_of_node_variables(self):
-        return self.config_dictionary[self.cbusconfig]["number_of_node_variables"]
+        try:
+            val = int(self.config_dictionary[self.cbusconfig]["number_of_node_variables"])
+            return val
+        except:
+            return 0
 
     @number_of_node_variables.setter
     def number_of_node_variables(self,val):
@@ -164,7 +223,11 @@ class NodeConfig:
 
     @property
     def canid(self):
-        return self.config_dictionary[self.cbusconfig]["canid"]
+        try:
+            val = int(self.config_dictionary[self.cbusconfig]["canid"])
+            return val
+        except:
+            return 0
 
     @canid.setter
     def canid(self,val):
@@ -172,16 +235,36 @@ class NodeConfig:
 
     @property
     def node_variables(self):
-        return binascii.hexlify(self.config_dictionary[self.cbusconfig]["node_variables"].encode('ascii'))
+        #return binascii.hexlify(self.config_dictionary[self.cbusconfig]["node_variables"].encode('ascii'))
+        return self.convertStringToArrayInt(self.config_dictionary[self.cbusconfig]["node_variables"])
 
     @node_variables.setter
     def node_variables(self, val):
-        self.config_dictionary[self.cbusconfig]["node_variables"] = "%s" % val
+        #val is an array of int
+        #this convert it to hexa
+
+        self.config_dictionary[self.cbusconfig]["node_variables"] = self.convertArrayIntToString(val)
 
     @property
     def node_number(self):
-        return self.config_dictionary[self.cbusconfig]["node_number"]
+        try:
+            val = int(self.config_dictionary[self.cbusconfig]["node_number"])
+            return val
+        except:
+            return 0
 
     @node_number.setter
     def node_number(self, val):
         self.config_dictionary[self.cbusconfig]["node_number"] = val
+
+    @property
+    def number_of_parameters(self):
+        try:
+            val = int(self.config_dictionary[self.cbusconfig]["number_of_parameters"])
+            return val
+        except:
+            return 0
+
+    @number_of_parameters.setter
+    def number_of_parameters(self, val):
+        self.config_dictionary[self.cbusconfig]["number_of_parameters"] = val

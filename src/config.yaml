@@ -1,31 +1,29 @@
-node_config:
-   log_level: DEBUG
-   log_file: node.log
-   cangrid_host: pi
-   cangrid_port: 4444
-   service_port: 7777
-
 cbus_config:
-   node_number: 1234
-   canid: 10
-   mode: 1
-   producer: True
-   consumer: True
-   module_id: 72
-   number_of_node_variables: 10
-   name: PIRFID
-   number_events: 10
-   variables_per_event: 2
-   manufacturer_id: 55
-   minor_code_version: 1
-   major_code_version: 0
-   node_variables: "AABBCCDDEEFF" #hexa format "ffaabb" 2 dgitis per variable
-   events:
-      - "A0B0FFFF": #hexa format "ffaabb" 2 dgitis per variable
-         variables: "AABB" #hexa format "ffaabb" 2 dgitis per variable
-      - "A0B0FFCC": #hexa format "ffaabb" 2 dgitis per variable
-         variables: "CCDD" #hexa format "ffaabb" 2 dgitis per variable
+  canid: 1
+  consumer: true
+  events:
+    0000000A:
+      variables: FF85
+  major_code_version: 0
+  manufacturer_id: 165
+  minor_code_version: 1
+  mode: 1
+  module_id: 72
+  name: 'PIRFID '
+  node_number: 258
+  node_variables: 0xFF,0xFF,0xFF,0xDD,0xEE,0xFF,0x00,0x00,0x00,0x00,0x00
+  number_events: 40
+  number_of_node_variables: 10
+  number_of_parameters: 20
+  producer: true
+  variables_per_event: 2
+node_config:
+  cangrid_host: pi
+  cangrid_port: 4444
+  log_file: node.log
+  log_level: DEBUG
+  service_port: 7777
 rfids:
-   16014023131: 1234
-   976876: 4
-   964238131: 300
+  976876: 4
+  964238131: 300
+  16014023131: 1234

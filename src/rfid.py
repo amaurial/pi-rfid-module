@@ -1,10 +1,8 @@
-import logging
 import os
 import signal
 import time
-import queue
+from facilities import *
 from node_config import *
-import threading
 
 import rfid_server
 from rfid_utils import *
@@ -15,48 +13,55 @@ from rfid_node import RfidNode
 default_port = 7777
 
 config = NodeConfig('config.yaml')
+facility = Facility(config)
+facility.start_logging()
 
+#############################
 ###### set the logger #######
 
-#logging.basicConfig(filename="rfid.log", filemode="w",level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %(filename)s - %(funcName)s - %(message)s')
-logFormater = logging.Formatter("%(levelname)s - %(asctime)s - %(filename)s - %(funcName)s - %(message)s")
-rootLogger = logging.getLogger()
-level = config.config_dictionary['node_config']['log_level']
+# #logging.basicConfig(filename="rfid.log", filemode="w",level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %(filename)s - %(funcName)s - %(message)s')
+# logFormater = logging.Formatter("%(levelname)s - %(asctime)s - %(filename)s - %(funcName)s - %(message)s")
+# rootLogger = logging.getLogger()
+#
+# if (rootLogger.hasHandlers()):
+#     rootLogger.handlers.clear()
+#
+# level = config.config_dictionary['node_config']['log_level']
+#
+# if level not in ['INFO', 'WARNING', 'DEBUG', 'CRITICAL', 'ERROR']:
+#     loglevel = logging.DEBUG
+# else:
+#     loglevel = logging.getLevelName(level)
+#
+# rootLogger.setLevel(loglevel)
+#
+# logname = config.config_dictionary['node_config']['log_file']
+# fileHandler = logging.FileHandler(logname)
+# fileHandler.setFormatter(logFormater)
+# rootLogger.addHandler(fileHandler)
+#
+# consoleHandler = logging.StreamHandler()
+# consoleHandler.setFormatter(logFormater)
+# rootLogger.addHandler(consoleHandler)
 
-if level not in ['INFO', 'WARNING', 'DEBUG', 'CRITICAL', 'ERROR']:
-    loglevel = logging.DEBUG
-else:
-    loglevel = logging.getLevelName(level)
-
-rootLogger.setLevel(loglevel)
-
-logname = config.config_dictionary['node_config']['log_file']
-fileHandler = logging.FileHandler(logname)
-fileHandler.setFormatter(logFormater)
-rootLogger.addHandler(fileHandler)
-
-consoleHandler = logging.StreamHandler()
-consoleHandler.setFormatter(logFormater)
-rootLogger.addHandler(consoleHandler)
-
-# flag used by threads in the run loop
-global running
-running = True
-
-# the queue containing the messages from the rfid readers
-global rfid_queue
-rfid_queue = queue.Queue()
-in_rfid_queue_condition = threading.Condition()
-
-#populated by the grid connect
-global incoming_cbus_queue
-incoming_cbus_queue = queue.Queue()
-in_cbus_queue_condition = threading.Condition()
-
-#consumed by the grid connect
-global outgoing_cbus_queue
-outgoing_cbus_queue = queue.Queue()
-out_cbus_queue_condition = threading.Condition()
+# #flag used by threads in the run loop
+# global running
+# running = True
+#
+# # the queue containing the messages from the rfid readers
+# global rfid_queue
+# rfid_queue = queue.Queue()
+# in_rfid_queue_condition = threading.Condition()
+#
+# #populated by the grid connect
+# global incoming_cbus_queue
+# incoming_cbus_queue = queue.Queue()
+# in_cbus_queue_condition = threading.Condition()
+#
+# #consumed by the grid connect
+# global outgoing_cbus_queue
+# outgoing_cbus_queue = queue.Queue()
+# out_cbus_queue_condition = threading.Condition()
 
 # signal handling function
 def receive_signal(signum, stack):
@@ -69,8 +74,6 @@ def receive_signal(signum, stack):
 
 signal.signal(signal.SIGINT, receive_signal)
 signal.signal(signal.SIGTERM, receive_signal)
-
-
 
 #create the tcp server. can be more than one. each server can handle several clients
 try:
@@ -109,8 +112,11 @@ rfidNode = RfidNode(rfid_queue = rfid_queue,
 def doNodeSetup(signum, stack):
     if signum == signal.SIGBUS:
         #send RQNN
-
-
+        if rfidNode.setup_mode:
+            logging.debug("Quitting setup mode")
+            rfidNode.setup_mode = False
+        else:
+            rfidNode.sendRQNN()
 
 signal.signal(signal.SIGBUS, doNodeSetup)
 

@@ -122,6 +122,7 @@ class CanGridClient(threading.Thread):
                 self.out_cbus_queue_condition.wait()
 
             if (self.cbus_out_queue.empty() == False):
+                self.out_cbus_queue_condition.acquire()
                 message = self.cbus_out_queue.get()
                 self.out_cbus_queue_condition.release()
                 logging.debug("Sending grid message %s" % (message))
