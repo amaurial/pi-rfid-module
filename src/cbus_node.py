@@ -46,6 +46,7 @@ class CBUSNode(threading.Thread):
                         OPC_NNACK, OPC_NERD, OPC_NENRD]):
                         self.handleCBUSMessages(data)
             else:
+                # if not config messages handle it to the node implementation                
                 self.nodeLogic(data)
 
     def stop(self):
@@ -185,7 +186,8 @@ class CBUSNode(threading.Thread):
 
         return message
 
-    #function to be override
+    # function to be override by the extending node
+    # all non config messages will trigger this function
     def nodeLogic(self, message):
         pass
 

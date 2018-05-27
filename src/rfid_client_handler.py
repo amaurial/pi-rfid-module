@@ -74,6 +74,8 @@ class RfidClient(threading.Thread):
         rfid_code = ""
         rfid_int = int(rfid)
 
+        #check the id against the config and if present get the config in there
+        #otherwise get the 4 first digits
         if rfid_int in self.config.config_dictionary[self.RFIDS]:
             rfid_code = self.config.config_dictionary[self.RFIDS][rfid_int]
             logging.debug("Value %s is present and code is %s" % (rfid, rfid_code))

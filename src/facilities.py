@@ -3,7 +3,6 @@ import queue
 import threading
 import signal
 
-
 class Facility:
     def __init__(self, config):
         self.rootLogger = logging.getLogger()
@@ -19,7 +18,6 @@ class Facility:
     def start_logging(self):
         #logging.basicConfig(filename="rfid.log", filemode="w",level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %(filename)s - %(funcName)s - %(message)s')
         logFormater = logging.Formatter("%(levelname)s - %(asctime)s - %(filename)s - %(funcName)s - %(message)s")
-
 
         if (self.rootLogger.hasHandlers()):
             self.rootLogger.handlers.clear()
@@ -41,7 +39,6 @@ class Facility:
         consoleHandler = logging.StreamHandler()
         consoleHandler.setFormatter(logFormater)
         self.rootLogger.addHandler(consoleHandler)
-
 
     # signal handling function
     def receive_signal(self, signum, stack):

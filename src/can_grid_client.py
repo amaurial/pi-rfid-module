@@ -7,7 +7,8 @@ import sys
 import socket
 import binascii
 from threading import Thread
-from opc import *
+#from opc import *
+import opc
 import queue
 
 #class that deals with the can grid messages, basically this class holds the client socket and the major code

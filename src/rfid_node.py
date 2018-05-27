@@ -4,6 +4,10 @@ from cbus_node import CBUSNode
 from threading import Thread
 import binascii
 
+# extends the CBUSNode class and implements the node logig
+# it is necessary to call super().__init__ in order
+# to start the threads to consume the can messages
+# and the grid messages
 
 class RfidNode(CBUSNode):
 
@@ -82,5 +86,7 @@ class RfidNode(CBUSNode):
         message = self.createGridMessage( opchex, int(rfid), int(sensor_id))
         return message
 
+    # handle all non config messages
+    # this node does not consume CBUS messages except the config
     def nodeLogic(self, message):
         logging.debug("Node received message from CBUS %s" % message)

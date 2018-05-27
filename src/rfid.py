@@ -1,8 +1,13 @@
+# this is the main file that starts all threads
+# the most important is that it instantiates the cbus node
+# each node extends the cbus_node
+
 import os
 import signal
 import time
 from facilities import *
 from node_config import *
+import facilities
 
 import rfid_server
 from rfid_utils import *
@@ -15,53 +20,6 @@ default_port = 7777
 config = NodeConfig('config.yaml')
 facility = Facility(config)
 facility.start_logging()
-
-#############################
-###### set the logger #######
-
-# #logging.basicConfig(filename="rfid.log", filemode="w",level=logging.DEBUG, format='%(levelname)s - %(asctime)s - %(filename)s - %(funcName)s - %(message)s')
-# logFormater = logging.Formatter("%(levelname)s - %(asctime)s - %(filename)s - %(funcName)s - %(message)s")
-# rootLogger = logging.getLogger()
-#
-# if (rootLogger.hasHandlers()):
-#     rootLogger.handlers.clear()
-#
-# level = config.config_dictionary['node_config']['log_level']
-#
-# if level not in ['INFO', 'WARNING', 'DEBUG', 'CRITICAL', 'ERROR']:
-#     loglevel = logging.DEBUG
-# else:
-#     loglevel = logging.getLevelName(level)
-#
-# rootLogger.setLevel(loglevel)
-#
-# logname = config.config_dictionary['node_config']['log_file']
-# fileHandler = logging.FileHandler(logname)
-# fileHandler.setFormatter(logFormater)
-# rootLogger.addHandler(fileHandler)
-#
-# consoleHandler = logging.StreamHandler()
-# consoleHandler.setFormatter(logFormater)
-# rootLogger.addHandler(consoleHandler)
-
-# #flag used by threads in the run loop
-# global running
-# running = True
-#
-# # the queue containing the messages from the rfid readers
-# global rfid_queue
-# rfid_queue = queue.Queue()
-# in_rfid_queue_condition = threading.Condition()
-#
-# #populated by the grid connect
-# global incoming_cbus_queue
-# incoming_cbus_queue = queue.Queue()
-# in_cbus_queue_condition = threading.Condition()
-#
-# #consumed by the grid connect
-# global outgoing_cbus_queue
-# outgoing_cbus_queue = queue.Queue()
-# out_cbus_queue_condition = threading.Condition()
 
 # signal handling function
 def receive_signal(signum, stack):
@@ -84,31 +42,47 @@ except KeyError:
 if is_integer(service_port) != True :
     service_port = default_port
 
-#start the server on all ips
+# start the server on all ips
+# receives the rfid from esps and put in the cangrid
+# the communication among the threads are made through queues
+# the esp messages are in rfid_queue
 tcpServer = rfid_server.RfidServer(host ="0.0.0.0",
                                    port = service_port,
                                    rfid_queue = rfid_queue,
-                                   in_rfid_queue_condition = in_rfid_queue_condition,
+                                   in_rfid_queue_condition = facilities.in_rfid_queue_condition,
                                    config = config)
 
 # start grid client
+# this is the cbus. all config messages comes through here
+# all rfid messages goes through here
+# cbus_in_queue has the incoming can messages
+# outgoing_cbus_queue are the outgoing messages
+# it populates incoming_cbus_queue
+# it consumes outgoing_cbus_queue
 gridClient = can_grid_client.CanGridClient(host = config.config_dictionary["node_config"]["cangrid_host"],
                                            port = config.config_dictionary["node_config"]["cangrid_port"],
-                                           incoming_cbus_queue = incoming_cbus_queue,
-                                           in_cbus_queue_condition = in_cbus_queue_condition,
-                                           outgoing_cbus_queue = outgoing_cbus_queue,
-                                           out_cbus_queue_condition = out_cbus_queue_condition,
+                                           incoming_cbus_queue = facilities.incoming_cbus_queue,
+                                           in_cbus_queue_condition = facilities.in_cbus_queue_condition,
+                                           outgoing_cbus_queue = facilities.outgoing_cbus_queue,
+                                           out_cbus_queue_condition = facilities.out_cbus_queue_condition,
                                            config = config)
 
+# cbus_in_queue has the incoming can messages
+# outgoing_cbus_queue are the outgoing messages
+# the module consume rfid_queue and put in outgoing_cbus_queue
+# the module extends the CBUSNode and consumes incoming_cbus_queue
+# and put the response in outgoing_cbus_queue
 rfidNode = RfidNode(rfid_queue = rfid_queue,
-                    incoming_cbus_queue = incoming_cbus_queue,
-                    in_cbus_queue_condition = in_cbus_queue_condition,
-                    outgoing_cbus_queue = outgoing_cbus_queue,
-                    out_cbus_queue_condition = out_cbus_queue_condition,
-                    in_rfid_queue_condition = in_rfid_queue_condition,
+                    incoming_cbus_queue = facilities.incoming_cbus_queue,
+                    in_cbus_queue_condition = facilities.in_cbus_queue_condition,
+                    outgoing_cbus_queue = facilities.outgoing_cbus_queue,
+                    out_cbus_queue_condition = facilities.out_cbus_queue_condition,
+                    in_rfid_queue_condition = facilities.in_rfid_queue_condition,
                     config = config)
 
-#set node setup signal
+# node setup function to be triggered by signal
+# the signal is triggered by kill command in the command line
+# kill -7
 def doNodeSetup(signum, stack):
     if signum == signal.SIGBUS:
         #send RQNN
@@ -118,6 +92,7 @@ def doNodeSetup(signum, stack):
         else:
             rfidNode.sendRQNN()
 
+#set node setup signal
 signal.signal(signal.SIGBUS, doNodeSetup)
 
 # initialise the main threads

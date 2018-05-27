@@ -6,7 +6,11 @@ import threading
 
 from rfid_client_handler import *
 
-
+# the server receives the messages from the ESPs with the RFIDs
+# include esp code and the read rfid
+# the server can receive 5 simultaneos requests
+# and start classes to handle each of then
+# there might be at some point several concurrent clients
 class RfidServer(threading.Thread):
     def __init__(self, host, port, rfid_queue, config, in_rfid_queue_condition):
         threading.Thread.__init__(self)
@@ -39,6 +43,7 @@ class RfidServer(threading.Thread):
             client.settimeout(60)
             logging.debug("New tcp client")
             id = self.id_generator()
+            # start a new client to handle the request
             clientHandler = RfidClient(client, address, self.rfid_queue, self, id, self.config, self.in_rfid_queue_condition)
             self.clients[id]=clientHandler
             clientHandler.start()
