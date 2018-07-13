@@ -21,7 +21,6 @@ GND     = GND
 #define SERIAL 1
 
 //const char *ssid =  "BRZHOME";     // change according to your Network - cannot be longer than 32 characters!
-//const char *pass =  "Casabrasilis"; // change according to your Network
 //const char* host = "192.168.1.100";
 
 const char *ssid =  "canpiwi";     // change according to your Network - cannot be longer than 32 characters!
